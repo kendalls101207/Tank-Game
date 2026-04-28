@@ -130,10 +130,10 @@ function drawTank() {
 
 // Draw bullets
 function drawBullets() {
-    ctx.fillStyle = 'red';
+    ctx.fillStyle = 'black';
     bullets.forEach(bullet => {
         ctx.beginPath();
-        ctx.arc(bullet.x, bullet.y, 3, 0, Math.PI * 2);
+        ctx.arc(bullet.x, bullet.y, 1.5, 0, Math.PI * 2);
         ctx.fill();
     });
 }
@@ -187,11 +187,12 @@ function updateTank() {
     }
     if (keys[' ']) {
         // Fire bullet
+        const bulletSpeed = tank.speed * 1.1;
         bullets.push({
             x: tank.x + Math.cos(tank.angle) * 10,
             y: tank.y + Math.sin(tank.angle) * 10,
-            dx: Math.cos(tank.angle) * tank.speed,
-            dy: Math.sin(tank.angle) * tank.speed,
+            dx: Math.cos(tank.angle) * bulletSpeed,
+            dy: Math.sin(tank.angle) * bulletSpeed,
             ricochets: 0
         });
         keys[' '] = false; // Prevent continuous firing
@@ -223,19 +224,37 @@ function updateBullets() {
                 bullets.splice(i, 1);
                 continue;
             }
-            // Ricochet
+            // Ricochet - determine which wall was hit based on velocity direction
             const r = Math.floor(bullet.y / cellSize);
             const c = Math.floor(bullet.x / cellSize);
             const cx = c * cellSize;
             const cy = r * cellSize;
-            if (maze[r][c].top && Math.abs(bullet.y - cy) < 3 && bullet.dy < 0) {
-                bullet.dy = -bullet.dy;
-            } else if (maze[r][c].bottom && Math.abs(bullet.y - (cy + cellSize)) < 3 && bullet.dy > 0) {
-                bullet.dy = -bullet.dy;
-            } else if (maze[r][c].left && Math.abs(bullet.x - cx) < 3 && bullet.dx < 0) {
+            
+            // Check which wall is in the direction of movement and reflect
+            // For horizontal walls (top/bottom): negate dy
+            // For vertical walls (left/right): negate dx
+            let wallHit = false;
+            
+            // Check vertical walls first based on x-velocity direction
+            if (bullet.dx < 0 && maze[r][c].left && bullet.x - cx < 5) {
+                // Moving left, hit left wall
                 bullet.dx = -bullet.dx;
-            } else if (maze[r][c].right && Math.abs(bullet.x - (cx + cellSize)) < 3 && bullet.dx > 0) {
+                wallHit = true;
+            } else if (bullet.dx > 0 && maze[r][c].right && cx + cellSize - bullet.x < 5) {
+                // Moving right, hit right wall
                 bullet.dx = -bullet.dx;
+                wallHit = true;
+            }
+            
+            // Check horizontal walls based on y-velocity direction
+            if (bullet.dy < 0 && maze[r][c].top && bullet.y - cy < 5) {
+                // Moving up, hit top wall
+                bullet.dy = -bullet.dy;
+                wallHit = true;
+            } else if (bullet.dy > 0 && maze[r][c].bottom && cy + cellSize - bullet.y < 5) {
+                // Moving down, hit bottom wall
+                bullet.dy = -bullet.dy;
+                wallHit = true;
             }
         } else {
             bullet.x = nx;
