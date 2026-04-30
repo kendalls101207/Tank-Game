@@ -8,13 +8,14 @@ const minMazeScale = 1;
 const maxMazeScale = 10;
 const tankBorderColor = '#080808';
 const tankFillColor = 'blue';
+const defaultTankSpeed = 100;
 
 let rows = 30;
 let cols = 40;
 let cellSize = 20;
 
 let maze = [];
-let tank = { x: cellSize / 2, y: cellSize / 2, angle: 0, speed: 1 };
+let tank = { x: cellSize / 2, y: cellSize / 2, angle: 0, speed: defaultTankSpeed };
 let bullets = [];
 let tankFragments = [];
 let blastStains = [];
@@ -83,11 +84,11 @@ function getTankBodyWidth() {
 }
 
 function getTankBodyHeight() {
-    return Math.max(8, cellSize * 0.45);
+    return Math.max(8, cellSize * 0.35);
 }
 
 function getTankBarrelLength() {
-    return Math.max(12, cellSize * 0.55);
+    return Math.max(12, cellSize * 0.35);
 }
 
 function getTankBarrelWidth() {
@@ -107,6 +108,17 @@ function setMazeDimensions(scale) {
 
 function getRandomMazeScale() {
     return Math.floor(Math.random() * (maxMazeScale - minMazeScale + 1)) + minMazeScale;
+}
+
+function resetMazeGenerationState() {
+    maze = [];
+    bullets = [];
+    tankFragments = [];
+    blastStains = [];
+    keys = {};
+    tank.speed = defaultTankSpeed;
+    gameRunning = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 // Draw the scene
@@ -305,8 +317,8 @@ function updateTank() {
         deltaY = Math.sin(tank.angle) * tank.speed;
     }
     if (keys['s']) {
-        deltaX -= Math.cos(tank.angle) * (tank.speed / 2);
-        deltaY -= Math.sin(tank.angle) * (tank.speed / 2);
+        deltaX -= Math.cos(tank.angle) * tank.speed;
+        deltaY -= Math.sin(tank.angle) * tank.speed;
     }
     if (keys['a']) {
         tank.angle -= 0.1;
@@ -490,22 +502,22 @@ document.addEventListener('keyup', (e) => {
 
 // Generate button click
 generateBtn.addEventListener('click', () => {
+    resetMazeGenerationState();
     const scale = getRandomMazeScale();
     setMazeDimensions(scale);
     
     // Set tank speed inversely to maze scale
     tank.speed = 2 / scale;
-    
-    // Clear prior debris
-    bullets = [];
-    tankFragments = [];
-    blastStains = [];
+    // Double the tank speed after it has been readjusted for maze size
+    tank.speed *= 2;
     
     initMaze();
     generateMaze(0, 0);
-    // Spawn tank
-    tank.x = cellSize / 2;
-    tank.y = cellSize / 2;
+    // Spawn tank at a random cell center anywhere in the generated maze
+    const spawnRow = Math.floor(Math.random() * rows);
+    const spawnCol = Math.floor(Math.random() * cols);
+    tank.x = spawnCol * cellSize + cellSize / 2;
+    tank.y = spawnRow * cellSize + cellSize / 2;
     tank.angle = 0;
     gameRunning = true;
     gameLoop();
