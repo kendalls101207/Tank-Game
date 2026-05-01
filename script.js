@@ -15,12 +15,13 @@ let cols = 40;
 let cellSize = 20;
 
 let maze = [];
-let tank = { x: cellSize / 2, y: cellSize / 2, angle: 0, speed: defaultTankSpeed };
+let tank = { x: cellSize / 2, y: cellSize / 2, angle: 0, speed: defaultTankSpeed, destroyed: false };
 let bullets = [];
 let tankFragments = [];
 let blastStains = [];
 let keys = {};
 let gameRunning = false;
+let resetTimer = 0;
 
 // Initialize maze with all walls
 function initMaze() {
@@ -117,7 +118,9 @@ function resetMazeGenerationState() {
     blastStains = [];
     keys = {};
     tank.speed = defaultTankSpeed;
+    tank.destroyed = false;
     gameRunning = false;
+    resetTimer = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
@@ -167,6 +170,7 @@ function drawScene() {
 
 // Draw tank
 function drawTank() {
+    if (tank.destroyed) return;
     const bodyWidth = getTankBodyWidth();
     const bodyHeight = getTankBodyHeight();
     const barrelLength = getTankBarrelLength();
@@ -309,6 +313,7 @@ function checkBulletWallCollision(bullet, nx, ny) {
 
 // Update tank
 function updateTank() {
+    if (tank.destroyed) return;
     let deltaX = 0;
     let deltaY = 0;
     
@@ -413,7 +418,9 @@ function updateBullets() {
         }
         // Check tank collision
         const dist = Math.sqrt((bullet.x - tank.x) ** 2 + (bullet.y - tank.y) ** 2);
-        if (dist < 10 && gameRunning) {
+        if (dist < 10 && gameRunning && !tank.destroyed) {
+            tank.destroyed = true;
+            resetTimer = 180; // 3 seconds at 60fps
             // Create blast stain
             blastStains.push({
                 x: tank.x,
@@ -479,29 +486,7 @@ function updateBlastStains() {
     }
 }
 
-// Game loop
-function gameLoop() {
-    if (!gameRunning && tankFragments.length === 0) return;
-    updateTank();
-    updateBullets();
-    updateTankFragments();
-    updateBlastStains();
-    drawScene();
-    requestAnimationFrame(gameLoop);
-}
-
-// Key listeners
-document.addEventListener('keydown', (e) => {
-    if (e.key === ' ') e.preventDefault();
-    keys[e.key] = true;
-});
-
-document.addEventListener('keyup', (e) => {
-    keys[e.key] = false;
-});
-
-// Generate button click
-generateBtn.addEventListener('click', () => {
+function generateNewMaze() {
     resetMazeGenerationState();
     const scale = getRandomMazeScale();
     setMazeDimensions(scale);
@@ -520,6 +505,38 @@ generateBtn.addEventListener('click', () => {
     tank.y = spawnRow * cellSize + cellSize / 2;
     tank.angle = 0;
     gameRunning = true;
+}
+
+// Game loop
+function gameLoop() {
+    if (!gameRunning && tankFragments.length === 0 && resetTimer === 0) return;
+    updateTank();
+    updateBullets();
+    updateTankFragments();
+    updateBlastStains();
+    if (resetTimer > 0) {
+        resetTimer--;
+        if (resetTimer === 0) {
+            generateNewMaze();
+        }
+    }
+    drawScene();
+    requestAnimationFrame(gameLoop);
+}
+
+// Key listeners
+document.addEventListener('keydown', (e) => {
+    if (e.key === ' ') e.preventDefault();
+    keys[e.key] = true;
+});
+
+document.addEventListener('keyup', (e) => {
+    keys[e.key] = false;
+});
+
+// Generate button click
+generateBtn.addEventListener('click', () => {
+    generateNewMaze();
     gameLoop();
 });
 
